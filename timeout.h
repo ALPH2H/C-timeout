@@ -59,7 +59,7 @@ struct Timeout {
   const void (*function)(void* data);
   void* data;
   unsigned int milliseconds;
-  unsigned char timeoutID;
+  unsigned short int timeoutID;
   const unsigned char* timeoutstatesavail;
   unsigned char** timeoutstatesaddr;
   unsigned short int* timeoutstatesfreelength;
@@ -124,6 +124,20 @@ inline unsigned short int SetCancelTimeout(const void (*function)(void* data), c
     exit(1);
   }
   return t->timeoutID;
+}
+
+struct SCTimeout {
+  unsigned short int timeoutID;
+  unsigned char** timeoutstatesaddr;
+};
+void TimeoutCancelTimeout(const struct SCTimeout* data) {
+  (*(data->timeoutstatesaddr))[data->timeoutID] = 1;
+}
+inline unsigned short int TimeoutedCancelTimeout(const unsigned short int timeoutID, const unsigned int milliseconds) {
+  struct SCTimeout* t = (struct SCTimeout*) malloc(sizeof(struct SCTimeout));
+  t->timeoutID = timeoutID;
+  t->timeoutstatesaddr = &TimeoutStatesAddr;
+  return SetCancelTimeout(TimeoutCancelTimeout, milliseconds, t);
 }
 
 inline unsigned short int SetMultipleCancelTimeouts(const void (*function)(void* data), const unsigned int milliseconds, void* data) {
