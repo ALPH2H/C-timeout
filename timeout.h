@@ -67,25 +67,23 @@ struct Timeout {
 };
 
 inline void ResizeTimeoutStates(const unsigned short int newSize) {
-  if(newSize > TimeoutStatesSize) {
-    TimeoutStatesAvail = 1;
-    TimeoutStates = (unsigned char*) realloc(TimeoutStates, newSize * sizeof(char));
-    if(TimeoutStates == NULL) {
-      exit(1);
-    }
-    TimeoutStatesAddr = TimeoutStates;
-    TimeoutStatesFree = (unsigned short int*) realloc(TimeoutStatesFree, newSize * sizeof(char));
-    if(TimeoutStatesFree == NULL) {
-      exit(1);
-    }
-    TimeoutStatesFreeAddr = TimeoutStatesFree;
-    for(register unsigned short int i = TimeoutStatesSize; i < newSize; ++i) {
-      TimeoutStates[i] = 0;
-      TimeoutStatesFree[TimeoutStatesFreeLength++] = i;
-    }
-    TimeoutStatesAvail = 0;
-    TimeoutStatesSize = newSize;
+  TimeoutStatesAvail = 1;
+  TimeoutStates = (unsigned char*) realloc(TimeoutStates, newSize * sizeof(char));
+  if(TimeoutStates == NULL) {
+    exit(1);
   }
+  TimeoutStatesAddr = TimeoutStates;
+  TimeoutStatesFree = (unsigned short int*) realloc(TimeoutStatesFree, newSize * sizeof(char));
+  if(TimeoutStatesFree == NULL) {
+    exit(1);
+  }
+  TimeoutStatesFreeAddr = TimeoutStatesFree;
+  for(register unsigned short int i = TimeoutStatesSize; i < newSize; ++i) {
+    TimeoutStates[i] = 0;
+    TimeoutStatesFree[TimeoutStatesFreeLength++] = i;
+  }
+  TimeoutStatesAvail = 0;
+  TimeoutStatesSize = newSize;
 }
 
 inline void CancelTimeout(const unsigned short int timeoutID) {
