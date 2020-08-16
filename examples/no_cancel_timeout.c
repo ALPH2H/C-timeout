@@ -21,6 +21,6 @@ int main() {
   
   puts("press any key to exit");
   getch();
-  free(numba);
+  free(number);
   return 0;
 }
