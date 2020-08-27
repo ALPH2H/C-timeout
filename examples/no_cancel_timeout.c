@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include "timeout.h"
 
 void editNumber(int* num) {
@@ -16,10 +15,10 @@ int main() {
   
   printf("number is %d\n", *number);
   SetNoCancelTimeout(editNumber, 500, number);
-  printf("the number after setting first timeout is still %d\n", number);
+  printf("the number after setting first timeout is still %d\n", *number);
   SetNoCancelTimeout(checkNumber, 600, number);
   
-  puts("press any key to exit");
+  //puts("press any key to exit");
   getch();
   free(number);
   return 0;
