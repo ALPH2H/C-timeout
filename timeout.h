@@ -1,3 +1,5 @@
+#ifdef __unix__
+
 #ifndef ftyIGIpM8CCTc_LjEitjVE2_O_d_raHw
 #define ftyIGIpM8CCTc_LjEitjVE2_O_d_raHw
 
@@ -6,31 +8,30 @@ extern "C" {
 #endif
 
 #include <stdlib.h>
-
-#ifdef _WIN32
-
-#include <windows.h>
+#include <pthread.h>
 
 struct NCTimeout {
   const void (*function)(void* data);
   void* data;
-  unsigned int milliseconds;
+  long milliseconds;
 };
 
-DWORD WINAPI NoCancelTimeout(struct NCTimeout* data) {
-  Sleep(data->milliseconds);
+void* NoCancelTimeout(struct NCTimeout* data) {
+  struct timespec t = { .tv_sec = (time_t) data->milliseconds / 1000, .tv_nsec = (data->milliseconds - (data->milliseconds / 1000) * 1000) * 1000 };
+  (void) nanosleep(&t, NULL);
   data->function(data->data);
   free(data);
-  return 0;
+  return NULL;
 }
 
-inline void SetNoCancelTimeout(const void (*function)(void* data), const unsigned int milliseconds, void* data) {
+void SetNoCancelTimeout(const void (*function)(void* data), const long milliseconds, void* data) {
   struct NCTimeout* t = (struct NCTimeout*) malloc(sizeof(struct NCTimeout));
   t->function = function;
   t->milliseconds = milliseconds;
   t->data = data;
-  HANDLE thread = CreateThread(NULL, 0, NoCancelTimeout, t, 0, NULL);
-  if(thread == NULL) {
+  pthread_t threadID;
+  int thread = pthread_create(&threadID, NULL, NoCancelTimeout, t);
+  if(thread != 0) {
     exit(1);
   }
 }
@@ -40,10 +41,10 @@ inline void SetNoCancelTimeout(const void (*function)(void* data), const unsigne
 static unsigned char* TimeoutStates;
 static unsigned char TimeoutStatesAvail;
 static unsigned char* TimeoutStatesAddr;
-static unsigned short int TimeoutStatesSize;
-static unsigned short int* TimeoutStatesFree;
-static unsigned short int* TimeoutStatesFreeAddr;
-static unsigned short int TimeoutStatesFreeLength;
+static unsigned int TimeoutStatesSize;
+static unsigned int* TimeoutStatesFree;
+static unsigned int* TimeoutStatesFreeAddr;
+static unsigned int TimeoutStatesFreeLength;
 
 void USE_CTIMEOUT() {
   TimeoutStatesSize = 1;
@@ -51,34 +52,34 @@ void USE_CTIMEOUT() {
   TimeoutStatesFreeLength = 1;
   TimeoutStates = (unsigned char*) calloc(1, sizeof(char));
   TimeoutStatesAddr = TimeoutStates;
-  TimeoutStatesFree = (unsigned short int*) calloc(1, sizeof(short int));
+  TimeoutStatesFree = (unsigned int*) calloc(1, sizeof(int));
   TimeoutStatesFreeAddr = TimeoutStatesFree;
 }
 
 struct Timeout {
   const void (*function)(void* data);
   void* data;
-  unsigned int milliseconds;
-  unsigned short int timeoutID;
+  long milliseconds;
+  unsigned int timeoutID;
+  unsigned int* timeoutstatesfreelength;
+  unsigned int** timeoutstatesfreeaddr;
   const unsigned char* timeoutstatesavail;
   unsigned char** timeoutstatesaddr;
-  unsigned short int* timeoutstatesfreelength;
-  unsigned short int** timeoutstatesfreeaddr;
 };
 
-inline void ResizeTimeoutStates(const unsigned short int newSize) {
+void ResizeTimeoutStates(const unsigned int newSize) {
   TimeoutStatesAvail = 1;
   TimeoutStates = (unsigned char*) realloc(TimeoutStates, newSize * sizeof(char));
   if(TimeoutStates == NULL) {
     exit(1);
   }
   TimeoutStatesAddr = TimeoutStates;
-  TimeoutStatesFree = (unsigned short int*) realloc(TimeoutStatesFree, newSize * sizeof(char));
+  TimeoutStatesFree = (unsigned int*) realloc(TimeoutStatesFree, newSize * sizeof(char));
   if(TimeoutStatesFree == NULL) {
     exit(1);
   }
   TimeoutStatesFreeAddr = TimeoutStatesFree;
-  for(register unsigned short int i = TimeoutStatesSize; i < newSize; ++i) {
+  for(register unsigned int i = TimeoutStatesSize; i < newSize; ++i) {
     TimeoutStates[i] = 0;
     TimeoutStatesFree[TimeoutStatesFreeLength++] = i;
   }
@@ -86,25 +87,28 @@ inline void ResizeTimeoutStates(const unsigned short int newSize) {
   TimeoutStatesSize = newSize;
 }
 
-inline void CancelTimeout(const unsigned short int timeoutID) {
+void CancelTimeout(const unsigned int timeoutID) {
   TimeoutStates[timeoutID] = 1;
 }
 
-DWORD WINAPI CTimeout(struct Timeout* data) {
-  Sleep(data->milliseconds);
+void* CTimeout(struct Timeout* data) {
+  struct timespec t = { .tv_sec = (time_t) data->milliseconds / 1000, .tv_nsec = (data->milliseconds - (data->milliseconds / 1000) * 1000) * 1000 };
+  (void) nanosleep(&t, NULL);
   while(*(data->timeoutstatesavail) == 1) {
-    Sleep(0);
+    t.tv_sec = 0;
+    t.tv_nsec = 0;
+    (void) nanosleep(&t, NULL);
   }
-  if((*(data->timeoutstatesaddr))[sizeof(short int) * data->timeoutID] == 0) {
+  if((*(data->timeoutstatesaddr))[sizeof(int) * data->timeoutID] == 0) {
     data->function(data->data);
   }
-  (*(data->timeoutstatesaddr))[sizeof(short int) * data->timeoutID] = 0;
+  (*(data->timeoutstatesaddr))[sizeof(int) * data->timeoutID] = 0;
   (*(data->timeoutstatesfreeaddr))[(*(data->timeoutstatesfreelength))++] = data->timeoutID;
   free(data);
-  return 0;
+  return NULL;
 }
 
-inline unsigned short int SetCancelTimeout(const void (*function)(void* data), const unsigned int milliseconds, void* data) {
+unsigned int SetCancelTimeout(const void (*function)(void* data), const long milliseconds, void* data) {
   if(TimeoutStatesFreeLength == 0) {
     ResizeTimeoutStates(TimeoutStatesSize + 1);
   }
@@ -117,28 +121,29 @@ inline unsigned short int SetCancelTimeout(const void (*function)(void* data), c
   t->timeoutstatesaddr = &TimeoutStatesAddr;
   t->timeoutstatesfreeaddr = &TimeoutStatesFreeAddr;
   t->timeoutstatesfreelength = &TimeoutStatesFreeLength;
-  HANDLE thread = CreateThread(NULL, 0, CTimeout, t, 0, NULL);
-  if(thread == NULL) {
+  pthread_t threadID;
+  int thread = pthread_create(&threadID, NULL, NoCancelTimeout, t);
+  if(thread != 0) {
     exit(1);
   }
   return t->timeoutID;
 }
 
 struct SCTimeout {
-  unsigned short int timeoutID;
+  unsigned int timeoutID;
   unsigned char** timeoutstatesaddr;
 };
 void TimeoutCancelTimeout(const struct SCTimeout* data) {
   (*(data->timeoutstatesaddr))[data->timeoutID] = 1;
 }
-inline unsigned short int TimeoutedCancelTimeout(const unsigned short int timeoutID, const unsigned int milliseconds) {
+unsigned int TimeoutedCancelTimeout(const unsigned int timeoutID, const long milliseconds) {
   struct SCTimeout* t = (struct SCTimeout*) malloc(sizeof(struct SCTimeout));
   t->timeoutID = timeoutID;
   t->timeoutstatesaddr = &TimeoutStatesAddr;
   return SetCancelTimeout(TimeoutCancelTimeout, milliseconds, t);
 }
 
-inline unsigned short int SetMultipleCancelTimeouts(const void (*function)(void* data), const unsigned int milliseconds, void* data) {
+unsigned int SetMultipleCancelTimeouts(const void (*function)(void* data), const long milliseconds, void* data) {
   struct Timeout* t = (struct Timeout*) malloc(sizeof(struct Timeout));
   t->function = function;
   t->milliseconds = milliseconds;
@@ -148,8 +153,9 @@ inline unsigned short int SetMultipleCancelTimeouts(const void (*function)(void*
   t->timeoutstatesaddr = &TimeoutStatesAddr;
   t->timeoutstatesfreeaddr = &TimeoutStatesFreeAddr;
   t->timeoutstatesfreelength = &TimeoutStatesFreeLength;
-  HANDLE thread = CreateThread(NULL, 0, CTimeout, t, 0, NULL);
-  if(thread == NULL) {
+  pthread_t threadID;
+  int thread = pthread_create(&threadID, NULL, NoCancelTimeout, t);
+  if(thread != 0) {
     exit(1);
   }
   return t->timeoutID;
@@ -157,10 +163,10 @@ inline unsigned short int SetMultipleCancelTimeouts(const void (*function)(void*
 
 #endif // _USE_CTIMEOUT
 
-#endif // _WIN32
-
 #ifdef __cplusplus
 }
 #endif
 
 #endif // ftyIGIpM8CCTc_LjEitjVE2_O_d_raHw
+
+#endif // __unix__
