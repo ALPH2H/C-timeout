@@ -19,7 +19,7 @@ int main() {
   SetNoCancelTimeout(checkNumber, 600, number);
   
   //puts("press any key to exit");
-  getch();
+  getc(stdin);
   free(number);
   return 0;
 }
