@@ -1,7 +1,7 @@
 #ifdef __unix__
 
 #ifndef ftyIGIpM8CCTc_LjEitjVE2_O_d_raHw
-#define ftyIGIpM8CCTc_LjEitjVE2_O_d_raHw
+#define ftyIGIpM8CCTc_LjEitjVE2_O_d_raHw 1
 
 #ifdef __cplusplus
 extern "C" {
