@@ -1,25 +1,20 @@
 #include <stdio.h>
-#include "timeout.h"
+#include "timeout.c"
 
 void editNumber(int* num) {
   *num = 1;
 }
 
-void checkNumber(int* num) {
-  printf("number is %d\n", *num);
+void say(int* num) {
+  printf("number is %i\n", *num);
 }
 
 int main() {
-  int* number = (int*) malloc(sizeof(int));
-  *number = 5;
+  int number = 5;
+  printf("number is %i\n", number);
+  (void) SetTimeout(editNumber, 500, &number); // we don't need to care about the return value if we will not cancel the timeout
+  (void) SetTimeout(say, 600, &number);
   
-  printf("number is %d\n", *number);
-  SetNoCancelTimeout(editNumber, 500, number);
-  printf("the number after setting first timeout is still %d\n", *number);
-  SetNoCancelTimeout(checkNumber, 600, number);
-  
-  //puts("press any key to exit");
   getc(stdin);
-  free(number);
   return 0;
 }
